@@ -1,5 +1,7 @@
 node_modules/
 dist/
+gift-files/
+*.tsbuildinfo
 
 *.log
 npm-debug.log*

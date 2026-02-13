@@ -264,6 +264,38 @@ body::before {
   transform: translateX(-50%) translateY(-22%) scale(1);
 }
 
+.gift-panel {
+  border: 1px solid rgba(159, 139, 255, 0.3);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgba(14, 17, 36, 0.75), rgba(28, 16, 45, 0.66)),
+    radial-gradient(circle at 20% 20%, rgba(149, 246, 255, 0.12), transparent 60%);
+  padding: 1rem;
+  box-shadow:
+    0 0 0 1px rgba(149, 246, 255, 0.08) inset,
+    0 12px 24px rgba(7, 5, 18, 0.45);
+}
+
+.gift-title {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(219, 214, 255, 0.84);
+}
+
+.gift-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.gift-note {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(219, 214, 255, 0.82);
+}
+
 @media (max-width: 640px) {
   .envelope-shell {
     height: 335px;

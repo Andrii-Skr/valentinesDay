@@ -44,6 +44,7 @@ const ESCAPE_JUMP_DESKTOP = 64;
 const ESCAPE_JUMP_MOBILE = 58;
 const ESCAPE_JITTER = 4;
 const EDGE_BIAS_ZONE = 22;
+const GIFT_FILE_NAME = 'Пирожочку.pdf';
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -64,6 +65,7 @@ function App() {
   const [bursts, setBursts] = useState<BurstParticle[]>([]);
   const [envelopeOpen, setEnvelopeOpen] = useState(false);
   const [isTouch, setIsTouch] = useState(false);
+  const [isGiftAvailable, setIsGiftAvailable] = useState(true);
 
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
@@ -75,6 +77,11 @@ function App() {
 
   const isQuestionStep = step >= 1 && step <= 3;
   const questionText = isQuestionStep ? QUESTIONS[step - 1] : '';
+  const giftFileName = GIFT_FILE_NAME;
+  const giftBaseUrl = import.meta.env.BASE_URL.endsWith('/')
+    ? import.meta.env.BASE_URL
+    : `${import.meta.env.BASE_URL}/`;
+  const giftFileUrl = `${giftBaseUrl}${encodeURIComponent(giftFileName)}`;
 
   const floatingHearts = useMemo<FloatingHeart[]>(
     () =>
@@ -511,6 +518,59 @@ function App() {
     return () => window.clearTimeout(timeout);
   }, [step]);
 
+  useEffect(() => {
+    if (step !== 5) return;
+
+    const controller = new AbortController();
+    let isActive = true;
+
+    const checkGiftFile = async () => {
+      try {
+        const headResponse = await fetch(giftFileUrl, {
+          method: 'HEAD',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+
+        if (!isActive) return;
+
+        if (headResponse.ok) {
+          setIsGiftAvailable(true);
+          return;
+        }
+
+        if (headResponse.status !== 405 && headResponse.status !== 501) {
+          setIsGiftAvailable(false);
+          return;
+        }
+      } catch {
+        if (controller.signal.aborted || !isActive) return;
+      }
+
+      try {
+        const getResponse = await fetch(giftFileUrl, {
+          method: 'GET',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+
+        if (!isActive) return;
+        setIsGiftAvailable(getResponse.ok);
+      } catch {
+        if (!controller.signal.aborted && isActive) {
+          setIsGiftAvailable(false);
+        }
+      }
+    };
+
+    void checkGiftFile();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [giftFileUrl, step]);
+
   return (
     <main className="relative min-h-screen overflow-hidden px-4 py-8 text-slate-100 sm:px-6 sm:py-12">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -642,7 +702,7 @@ function App() {
               }}
               className="neon-button neon-button-yes mx-auto"
             >
-              Открыть подарок
+              Открыть валентинку
             </button>
           </div>
         )}
@@ -650,7 +710,9 @@ function App() {
         {step === 5 && (
           <div className="animate-fade-slow text-center">
             <p className="mb-3 text-xs uppercase tracking-[0.28em] text-violet-200/80">письмо для тебя</p>
-            <h2 className="card-title mb-6 text-5xl text-pink-200 sm:text-6xl">Моя валентинка</h2>
+            <h2 className="card-title relative z-20 mb-6 text-5xl text-pink-200 sm:text-6xl">
+              Моя валентинка
+            </h2>
 
             <div
               className={`envelope-shell mx-auto w-full max-w-xl ${envelopeOpen ? 'envelope-open' : ''}`}
@@ -666,16 +728,34 @@ function App() {
             >
               <div className="envelope-back" />
               <div className="envelope-letter">
-                <p>Моя [ИМЯ],</p>
-                <p>Обожаю, как [1–2 ЛИЧНЫЕ ДЕТАЛИ] делают мой день спокойнее и теплее.</p>
+                <p>Мой Пирожочек,</p>
+                <p>Ты красотка, бубочка, лапуля, радость и принцесса (когда не чихаешь)</p>
                 <p>С тобой даже обычный вечер превращается в маленький праздник.</p>
-                <p>Мне нравится, как мы смеёмся над своими мелочами и понимаем друг друга с полуслова.</p>
+                <p>Мне нравится, как мы смеёмся над своими мелочами и понимаем друг друга с полуслова (иногда даже без).</p>
                 <p>Спасибо тебе за нежность, терпение и твоё живое, настоящее сердце.</p>
                 <p>Я рядом, и хочу беречь это «мы» каждый день.</p>
-                <p className="mt-4 text-right">С любовью, [ПОДПИСЬ] ❤</p>
+                <p className="mt-4 text-right">С любовью, Котик ❤</p>
               </div>
               <div className="envelope-flap" />
               <div className="envelope-front" />
+            </div>
+
+            <div className="gift-panel mx-auto mt-6 w-fit text-center">
+              <p className="gift-title">Твой Подарок</p>
+              <div className="gift-actions mt-3 justify-center">
+                {isGiftAvailable ? (
+                  <a
+                    href={giftFileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="neon-button neon-button-yes"
+                  >
+                    Открыть подарок
+                  </a>
+                ) : (
+                  <p className="gift-note">Подарок не найден в папке gift-files.</p>
+                )}
+              </div>
             </div>
           </div>
         )}

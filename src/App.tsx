@@ -1,7 +1,14 @@
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  LETTER_PARAGRAPHS,
+  LETTER_SIGNATURE,
+  LOCKET_PHOTO_ALT,
+  LOCKET_PHOTO_FILE_PATH,
+  QUESTION_TEXTS,
+} from './content';
 
-type Step = 0 | 1 | 2 | 3 | 4 | 5;
+type Step = number;
 type Point = { x: number; y: number };
 type Trail = { id: number; x: number; y: number };
 type BurstParticle = {
@@ -22,12 +29,6 @@ type FloatingHeart = {
   opacity: number;
 };
 
-const QUESTIONS = [
-  'Ты самая прекрасная девушка на планете?',
-  'Ты умеешь делать мой день лучше одним сообщением?',
-  'Согласна принять эту валентинку и моё сердце?',
-];
-
 const PLAYFUL_HINTS = ['ой!', 'не поймать 😅', 'я стесняюсь'];
 
 const MILESTONE_HINTS: Record<number, string> = {
@@ -44,7 +45,6 @@ const ESCAPE_JUMP_DESKTOP = 64;
 const ESCAPE_JUMP_MOBILE = 58;
 const ESCAPE_JITTER = 4;
 const EDGE_BIAS_ZONE = 22;
-const GIFT_FILE_NAME = 'Пирожочку.pdf';
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -52,8 +52,22 @@ const clamp = (value: number, min: number, max: number) =>
 const randomBetween = (min: number, max: number) =>
   min + Math.random() * Math.max(max - min, 1);
 
+const buildAssetUrl = (baseUrl: string, filePath: string) =>
+  `${baseUrl}${filePath
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')}`;
+
+const INTRO_STEP = 0;
+const FIRST_QUESTION_STEP = 1;
+const QUESTION_STEPS_COUNT = QUESTION_TEXTS.length;
+const LAST_QUESTION_STEP = FIRST_QUESTION_STEP + QUESTION_STEPS_COUNT - 1;
+const SURPRISE_STEP = LAST_QUESTION_STEP + 1;
+const LETTER_STEP = LAST_QUESTION_STEP + 2;
+
 function App() {
-  const [step, setStep] = useState<Step>(0);
+  const [step, setStep] = useState<Step>(INTRO_STEP);
   const [escapeCount, setEscapeCount] = useState(0);
   const [noPos, setNoPos] = useState<Point>({ x: 24, y: 24 });
   const [noLabel, setNoLabel] = useState('Нет');
@@ -64,8 +78,10 @@ function App() {
   const [trails, setTrails] = useState<Trail[]>([]);
   const [bursts, setBursts] = useState<BurstParticle[]>([]);
   const [envelopeOpen, setEnvelopeOpen] = useState(false);
+  const [isLocketOpened, setIsLocketOpened] = useState(false);
+  const [isLocketPhotoAvailable, setIsLocketPhotoAvailable] = useState(true);
+  const [locketPhotoAttempt, setLocketPhotoAttempt] = useState(0);
   const [isTouch, setIsTouch] = useState(false);
-  const [isGiftAvailable, setIsGiftAvailable] = useState(true);
 
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
@@ -75,13 +91,18 @@ function App() {
   const pauseTimeoutRef = useRef<number>();
   const hintTimeoutRef = useRef<number>();
 
-  const isQuestionStep = step >= 1 && step <= 3;
-  const questionText = isQuestionStep ? QUESTIONS[step - 1] : '';
-  const giftFileName = GIFT_FILE_NAME;
-  const giftBaseUrl = import.meta.env.BASE_URL.endsWith('/')
+  const isQuestionStep =
+    QUESTION_STEPS_COUNT > 0 &&
+    step >= FIRST_QUESTION_STEP &&
+    step <= LAST_QUESTION_STEP;
+  const currentQuestionIndex = step - FIRST_QUESTION_STEP;
+  const currentQuestionNumber = currentQuestionIndex + 1;
+  const questionText = isQuestionStep ? QUESTION_TEXTS[currentQuestionIndex] : '';
+  const assetBaseUrl = import.meta.env.BASE_URL.endsWith('/')
     ? import.meta.env.BASE_URL
     : `${import.meta.env.BASE_URL}/`;
-  const giftFileUrl = `${giftBaseUrl}${encodeURIComponent(giftFileName)}`;
+  const locketPhotoUrl = buildAssetUrl(assetBaseUrl, LOCKET_PHOTO_FILE_PATH);
+  const locketPhotoRequestUrl = `${locketPhotoUrl}?v=${locketPhotoAttempt}`;
 
   const floatingHearts = useMemo<FloatingHeart[]>(
     () =>
@@ -380,15 +401,25 @@ function App() {
     spawnBurst(17);
     window.navigator.vibrate?.(22);
 
-    if (step >= 1 && step < 3) {
-      setStep((prev) => (prev + 1) as Step);
+    if (isQuestionStep && step < LAST_QUESTION_STEP) {
+      setStep((prev) => prev + 1);
       return;
     }
 
-    if (step === 3) {
-      setStep(4);
+    if (isQuestionStep && step === LAST_QUESTION_STEP) {
+      setStep(SURPRISE_STEP);
     }
-  }, [spawnBurst, step]);
+  }, [isQuestionStep, spawnBurst, step]);
+
+  const handleOpenLocket = useCallback(() => {
+    setIsLocketOpened(true);
+    setIsLocketPhotoAvailable(true);
+    setLocketPhotoAttempt((prev) => prev + 1);
+  }, []);
+
+  const handleLocketPhotoError = useCallback(() => {
+    setIsLocketPhotoAvailable(false);
+  }, []);
 
   useEffect(() => {
     const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
@@ -502,15 +533,18 @@ function App() {
   }, [clampToBounds, getEscapeBounds, isNoFloating, isQuestionStep, noPos]);
 
   useEffect(() => {
-    if (step === 4) {
+    if (step === SURPRISE_STEP) {
       spawnBurst(20);
     }
   }, [spawnBurst, step]);
 
   useEffect(() => {
-    if (step !== 5) return;
+    if (step !== LETTER_STEP) return;
 
     setEnvelopeOpen(false);
+    setIsLocketOpened(false);
+    setIsLocketPhotoAvailable(true);
+    setLocketPhotoAttempt(0);
     const timeout = window.setTimeout(() => {
       setEnvelopeOpen(true);
     }, 320);
@@ -519,57 +553,31 @@ function App() {
   }, [step]);
 
   useEffect(() => {
-    if (step !== 5) return;
+    if (step !== LETTER_STEP) return;
 
-    const controller = new AbortController();
-    let isActive = true;
+    let cancelled = false;
+    const preview = new Image();
 
-    const checkGiftFile = async () => {
-      try {
-        const headResponse = await fetch(giftFileUrl, {
-          method: 'HEAD',
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        if (!isActive) return;
-
-        if (headResponse.ok) {
-          setIsGiftAvailable(true);
-          return;
-        }
-
-        if (headResponse.status !== 405 && headResponse.status !== 501) {
-          setIsGiftAvailable(false);
-          return;
-        }
-      } catch {
-        if (controller.signal.aborted || !isActive) return;
-      }
-
-      try {
-        const getResponse = await fetch(giftFileUrl, {
-          method: 'GET',
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        if (!isActive) return;
-        setIsGiftAvailable(getResponse.ok);
-      } catch {
-        if (!controller.signal.aborted && isActive) {
-          setIsGiftAvailable(false);
-        }
+    preview.onload = () => {
+      if (!cancelled) {
+        setIsLocketPhotoAvailable(true);
       }
     };
 
-    void checkGiftFile();
+    preview.onerror = () => {
+      if (!cancelled) {
+        setIsLocketPhotoAvailable(false);
+      }
+    };
+
+    preview.src = `${locketPhotoUrl}?preload=${Date.now()}`;
 
     return () => {
-      isActive = false;
-      controller.abort();
+      cancelled = true;
+      preview.onload = null;
+      preview.onerror = null;
     };
-  }, [giftFileUrl, step]);
+  }, [locketPhotoUrl, step]);
 
   return (
     <main className="relative min-h-screen overflow-hidden px-4 py-8 text-slate-100 sm:px-6 sm:py-12">
@@ -610,17 +618,19 @@ function App() {
           ))}
         </div>
 
-        {step === 0 && (
+        {step === INTRO_STEP && (
           <div className="animate-fade-slow text-center">
             <h1 className="card-title mb-4 text-5xl text-pink-200 sm:text-6xl">
-              У меня к тебе 3 вопроса 💜
+              У меня к тебе {QUESTION_STEPS_COUNT} вопроса 💜
             </h1>
             <p className="mx-auto mb-8 max-w-xl text-sm text-slate-200/90 sm:text-base">
               Всего несколько секунд на каждый, а настроение пусть останется тёплым на весь вечер.
             </p>
             <button
               type="button"
-              onClick={() => setStep(1)}
+              onClick={() =>
+                setStep(QUESTION_STEPS_COUNT > 0 ? FIRST_QUESTION_STEP : SURPRISE_STEP)
+              }
               className="neon-button neon-button-yes mx-auto"
             >
               Начать
@@ -631,7 +641,7 @@ function App() {
         {isQuestionStep && (
           <div className="animate-fade-slow relative">
             <p className="mb-4 text-xs uppercase tracking-[0.28em] text-violet-200/80">
-              вопрос {step} из 3
+              вопрос {currentQuestionNumber} из {QUESTION_STEPS_COUNT}
             </p>
             <h2 className="mb-2 text-2xl font-extrabold leading-tight text-slate-100 sm:text-3xl">
               {questionText}
@@ -688,7 +698,7 @@ function App() {
           </div>
         )}
 
-        {step === 4 && (
+        {step === SURPRISE_STEP && (
           <div className="animate-fade-slow text-center">
             <h2 className="card-title mb-3 text-6xl text-cyan-100 sm:text-7xl">Я знал 😌</h2>
             <p className="mx-auto mb-7 max-w-xl text-sm text-slate-200/90 sm:text-base">
@@ -698,7 +708,7 @@ function App() {
               type="button"
               onClick={() => {
                 spawnBurst(24);
-                setStep(5);
+                setStep(LETTER_STEP);
               }}
               className="neon-button neon-button-yes mx-auto"
             >
@@ -707,7 +717,7 @@ function App() {
           </div>
         )}
 
-        {step === 5 && (
+        {step === LETTER_STEP && (
           <div className="animate-fade-slow text-center">
             <p className="mb-3 text-xs uppercase tracking-[0.28em] text-violet-200/80">письмо для тебя</p>
             <h2 className="card-title relative z-20 mb-6 text-5xl text-pink-200 sm:text-6xl">
@@ -728,34 +738,46 @@ function App() {
             >
               <div className="envelope-back" />
               <div className="envelope-letter">
-                <p>Мой Пирожочек,</p>
-                <p>Ты красотка, бубочка, лапуля, радость и принцесса (когда не чихаешь)</p>
-                <p>С тобой даже обычный вечер превращается в маленький праздник.</p>
-                <p>Мне нравится, как мы смеёмся над своими мелочами и понимаем друг друга с полуслова (иногда даже без).</p>
-                <p>Спасибо тебе за нежность, терпение и твоё живое, настоящее сердце.</p>
-                <p>Я рядом, и хочу беречь это «мы» каждый день.</p>
-                <p className="mt-4 text-right">С любовью, Котик ❤</p>
+                {LETTER_PARAGRAPHS.map((paragraph, index) => (
+                  <p key={`letter-paragraph-${index}`}>{paragraph}</p>
+                ))}
+                <p className="mt-4 text-right">{LETTER_SIGNATURE}</p>
               </div>
               <div className="envelope-flap" />
               <div className="envelope-front" />
             </div>
 
-            <div className="gift-panel mx-auto mt-6 w-fit text-center">
-              <p className="gift-title">Твой Подарок</p>
-              <div className="gift-actions mt-3 justify-center">
-                {isGiftAvailable ? (
-                  <a
-                    href={giftFileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="neon-button neon-button-yes"
-                  >
-                    Открыть подарок
-                  </a>
-                ) : (
-                  <p className="gift-note">Подарок не найден в папке gift-files.</p>
-                )}
-              </div>
+            <div className="locket-panel relative z-30 mx-auto mt-6 text-center">
+              <p className="gift-title">Твой кулон</p>
+              <button
+                type="button"
+                className="locket-button mt-3"
+                onClick={handleOpenLocket}
+                aria-label="Открыть кулон"
+              >
+                <span className="locket-chain" />
+                <span className="locket-heart">
+                  {isLocketOpened && isLocketPhotoAvailable ? (
+                    <img
+                      src={locketPhotoRequestUrl}
+                      alt={LOCKET_PHOTO_ALT}
+                      className="locket-photo"
+                      loading="lazy"
+                      onError={handleLocketPhotoError}
+                    />
+                  ) : (
+                    <span className="locket-photo-fallback" aria-hidden="true">
+                      ❤
+                    </span>
+                  )}
+                </span>
+              </button>
+              {!isLocketOpened && (
+                <p className="gift-note mt-3">Нажми на кулон, чтобы открыть фото</p>
+              )}
+              {isLocketOpened && !isLocketPhotoAvailable && (
+                <p className="gift-note mt-3">Добавь файл public/{LOCKET_PHOTO_FILE_PATH}</p>
+              )}
             </div>
           </div>
         )}

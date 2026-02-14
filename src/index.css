@@ -264,18 +264,6 @@ body::before {
   transform: translateX(-50%) translateY(-22%) scale(1);
 }
 
-.gift-panel {
-  border: 1px solid rgba(159, 139, 255, 0.3);
-  border-radius: 20px;
-  background:
-    linear-gradient(145deg, rgba(14, 17, 36, 0.75), rgba(28, 16, 45, 0.66)),
-    radial-gradient(circle at 20% 20%, rgba(149, 246, 255, 0.12), transparent 60%);
-  padding: 1rem;
-  box-shadow:
-    0 0 0 1px rgba(149, 246, 255, 0.08) inset,
-    0 12px 24px rgba(7, 5, 18, 0.45);
-}
-
 .gift-title {
   margin: 0;
   font-size: 0.85rem;
@@ -284,16 +272,127 @@ body::before {
   color: rgba(219, 214, 255, 0.84);
 }
 
-.gift-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
 .gift-note {
   margin: 0;
   font-size: 0.88rem;
   color: rgba(219, 214, 255, 0.82);
+}
+
+.locket-panel {
+  position: relative;
+  z-index: 30;
+  width: fit-content;
+}
+
+.locket-button {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 26px 0 0;
+  touch-action: manipulation;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.locket-button:hover {
+  transform: translateY(-2px) scale(1.015);
+  filter: brightness(1.06);
+}
+
+.locket-button:focus-visible {
+  outline: 2px solid rgba(149, 246, 255, 0.95);
+  outline-offset: 6px;
+  border-radius: 18px;
+}
+
+.locket-chain {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 3px;
+  height: 26px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(253, 241, 182, 0.95), rgba(189, 149, 92, 0.9));
+  box-shadow:
+    0 0 12px rgba(255, 212, 134, 0.42),
+    0 0 0 1px rgba(253, 225, 167, 0.26);
+}
+
+.locket-heart {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 156px;
+  height: 142px;
+  clip-path: polygon(
+    50% 100%,
+    43% 94%,
+    35% 86%,
+    27% 76%,
+    18% 64%,
+    10% 52%,
+    6% 40%,
+    6% 30%,
+    10% 21%,
+    17% 14%,
+    26% 9%,
+    35% 8%,
+    43% 11%,
+    50% 17%,
+    57% 11%,
+    65% 8%,
+    74% 9%,
+    83% 14%,
+    90% 21%,
+    94% 30%,
+    94% 40%,
+    90% 52%,
+    82% 64%,
+    73% 76%,
+    65% 86%,
+    57% 94%
+  );
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(130, 31, 80, 0.98), rgba(90, 17, 65, 0.96));
+  border: 2px solid rgba(255, 178, 216, 0.7);
+  box-shadow:
+    0 0 0 2px rgba(255, 116, 208, 0.24) inset,
+    0 0 32px rgba(255, 116, 208, 0.35),
+    0 14px 28px rgba(7, 3, 15, 0.56);
+}
+
+.locket-heart::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 23% 22%, rgba(255, 255, 255, 0.28), transparent 44%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+}
+
+.locket-photo {
+  --locket-photo-offset-y: 30px;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(1.05) contrast(1.02);
+  transform: translateY(var(--locket-photo-offset-y)) scale(1.8);
+  transform-origin: center;
+}
+
+.locket-photo-fallback {
+  font-size: 3.15rem;
+  line-height: 1;
+  color: rgba(255, 228, 245, 0.95);
+  text-shadow:
+    0 0 12px rgba(255, 116, 208, 0.66),
+    0 0 24px rgba(149, 246, 255, 0.3);
 }
 
 @media (max-width: 640px) {
@@ -308,6 +407,11 @@ body::before {
 
   .envelope-letter p {
     font-size: 0.88rem;
+  }
+
+  .locket-heart {
+    width: 132px;
+    height: 120px;
   }
 }
 

@@ -2,6 +2,7 @@ node_modules/
 dist/
 gift-files/
 *.tsbuildinfo
+vite.config.js
 
 *.log
 npm-debug.log*
